@@ -1,38 +1,50 @@
-from flask import Flask, render_template
+from flask import Flask
 from flask_restful import Api
 from flask_jwt import JWT
 from werkzeug.security import safe_str_cmp
-
-from private_user import db , PrivateUserRegister,PrivateUserModel
+from private_user import PrivateUserRegister,PrivateUserList,PrivateUserRegisterModel
+from business_user import BusinessUserRegister,BusinessUserList,BusinessUserRegisterModel
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.secret_key = 'behnam'
 api = Api(app)
 
 
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
-def authenticate(username, password):
-    user = PrivateUserModel.find_by_username(username)
+def authenticate_private_user(username, password):
+    user = PrivateUserRegisterModel.find_by_username(username)
     if user and safe_str_cmp(user.password, password):
         return user
 
 
-def identity(payload):
+def identity_private_user(payload):
     user_id = payload['identity']
-    return PrivateUserModel.find_by_id(user_id)
+    return PrivateUserRegisterModel.find_by_id(user_id)
 
-jwt = JWT(app, authenticate, identity)  # /auth
+def authenticate_business_user(username, password):
+    user = BusinessUserRegisterModel.find_by_username(username)
+    if user and safe_str_cmp(user.password, password):
+        return user
+
+
+def identity_business_user(payload):
+    user_id = payload['identity']
+    return BusinessUserRegisterModel.find_by_id(user_id)
+
+jwt_private_user = JWT(app, authenticate_private_user, identity_private_user)  # /auth
+
+jwt_business_user=JWT(app, authenticate_business_user, identity_business_user)  # /auth
 
 api.add_resource(PrivateUserRegister, '/private_user_register')
+api.add_resource(PrivateUserList, '/private_user/<string:username>')
+
+api.add_resource(BusinessUserRegister, '/business_user_register')
+api.add_resource(BusinessUserList, '/business_user/<string:username>')
+
 
 
 if __name__ == '__main__':
-    from private_user import db
-    db.init_app(app)
+
     app.run(port=5000, debug=True)
